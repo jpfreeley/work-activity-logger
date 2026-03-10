@@ -3,7 +3,7 @@ prompts for a snippet about what you are currently working on at standard config
 
 applescript file available for MacOS
 
-Configuration options which are asked for at initial run: 
+## Configuration options which are asked for at initial run: 
 ```
 property intervalMinutes : 15          # Prompt Interval
 property snoozeMinutes : 60            # Snooze Length
@@ -16,3 +16,6 @@ property startMinute : 0               # Only prompt from Start Minute (Local Ti
 property endHour : 17                  # Only prompt until End Hour (Local Time) 
 property endMinute : 0                 # Only prompt until End Minute (Local Time) 
 ```
+
+## To-Do
+Write the note to iCloud to allow sync to other devices
