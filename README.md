@@ -19,3 +19,6 @@ property endMinute : 0                 # Only prompt until End Minute (Local Tim
 
 ## To-Do
 Write the note to iCloud to allow sync to other devices
+
+## Notes
+This project was AI assisted, mainly "Perplexity (Free)" with some additional help from "Gemini-3 Flash" and "Qwen3 (Coder)"
