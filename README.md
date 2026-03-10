@@ -2,8 +2,9 @@
 prompts for a snippet about what you are currently working on at standard configurable intervals
 
 applescript file available for MacOS
-```
+
 Configuration options which are asked for at initial run: 
+```
 property intervalMinutes : 15          # Prompt Interval
 property snoozeMinutes : 60            # Snooze Length
 property timeoutSeconds : 60           # Dialog Box Timeout
