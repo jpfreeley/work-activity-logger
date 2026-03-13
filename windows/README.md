@@ -1,3 +1,36 @@
+# How to run?? 
+
+1. Save the PowerShell script I provided earlier as `status-logger.ps1` in a folder you won’t move or delete, e.g., `C:\Scripts\status-logger.ps1`.
+
+2. Run PowerShell with the STA apartment state:
+**`powershell.exe -STA -NoProfile -ExecutionPolicy Bypass -File .\status-logger.ps1`**
+
+# Where are logs stored??
+
+In the PowerShell script I provided, the log file is stored in your **Documents** folder.
+
+Specifically, the location is defined by this line in the script:
+```powershell
+$global:logPath = Join-Path $env:USERPROFILE "Documents\$($global:noteName).txt"
+```
+
+Since `$global:noteName` is set to `"Work Status Log"`, the full path on a standard Windows 11 installation will be:
+**`C:\Users\YourUsername\Documents\Work Status Log.txt`**
+
+### Key Details about the Log File:
+*   **Format:** It is a plain text file (`.txt`).
+*   **Encoding:** It uses **UTF8** encoding to ensure special characters are handled correctly.
+*   **Behavior:** The script uses `Add-Content`, which means it **appends** new entries to the end of the file rather than overwriting it.
+*   **Debug Logs:** If you enabled "Debug Mode" during the initial setup, debug messages (like "Setup complete" or "Skip clicked") will also be written into this same file, prefixed with `DEBUG`.
+
+### How to change the location:
+If you would prefer the logs to be saved elsewhere (for example, in a Dropbox or OneDrive folder for syncing), you can simply change that one line in the script to a hardcoded path, like this:
+```powershell
+$global:logPath = "C:\MyLogs\WorkStatus.txt"
+```
+
+# How to run continuously??
+
 To have this PowerShell status logger run continuously at startup on Windows 11, the best approach is:
 
 1. Save the script as a `.ps1` file (e.g., `status-logger.ps1`).
@@ -65,5 +98,3 @@ powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "C:\
 - You can edit the script anytime; changes will take effect next time it runs.
 
 ---
-
-If you want, I can generate a ready-to-import XML file for the scheduled task or help you create a Windows service wrapper for even more robustness. Just ask!
