@@ -3,7 +3,9 @@
 1. Save the PowerShell script I provided earlier as `status-logger.ps1` in a folder you won’t move or delete, e.g., `C:\Scripts\status-logger.ps1`.
 
 2. Run PowerShell with the STA apartment state:
-**`powershell.exe -STA -NoProfile -ExecutionPolicy Bypass -File .\status-logger.ps1`**
+```powershell.exe 
+-STA -NoProfile -ExecutionPolicy Bypass -File .\status-logger.ps1
+```
 
 # Where are logs stored??
 
