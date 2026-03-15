@@ -22,6 +22,7 @@ $global:entryMaxLength = 180
 
 function Log-Debug {
     param($msg)
+    Write-Host "DEBUG: $msg" -ForegroundColor Cyan
     if (-not $global:debugMode) { return }
     $stamp = (Get-Date).ToString()
     $entry = "`r`nDEBUG [${stamp}]: $msg"
@@ -54,69 +55,50 @@ function Format-Time($h, $m) {
 }
 
 function Parse-HoursPair($inputString) {
-    # Null/empty check
     if ([string]::IsNullOrWhiteSpace($inputString)) {
         throw "Work hours cannot be empty. Please enter times like '9:00 17:00'."
     }
     
-    # Split by whitespace and filter out empty entries
     $parts = $inputString -split '\s+' | Where-Object { $_ -ne "" }
     
     if ($parts.Count -ne 2) { 
         throw "Please supply exactly two times separated by a space (e.g. '9:00 17:00')." 
     }
     
-    $startTime = $parts[0]
-    $endTime = $parts[1]
-    
-    # Split each time part
-    $startComponents = $startTime -split ':'
-    $endComponents = $endTime -split ':'
+    $startComponents = $parts[0] -split ':'
+    $endComponents = $parts[1] -split ':'
     
     if ($startComponents.Count -ne 2 -or $endComponents.Count -ne 2) { 
         throw "Invalid time format. Each time must be H:MM (e.g. 9:00)." 
     }
     
-    # Validate numeric values
-    if (-not ($startComponents[0] -match '^\d+$' -and $startComponents[1] -match '^\d+$' -and
-              $endComponents[0] -match '^\d+$' -and $endComponents[1] -match '^\d+$')) {
-        throw "Hours and minutes must be numeric."
-    }
-    
-    # Convert to integers
-    $startHour = [int]$startComponents[0]
-    $startMinute = [int]$startComponents[1]
-    $endHour = [int]$endComponents[0]
-    $endMinute = [int]$endComponents[1]
-    
-    # Return as object with named properties
     return @{
-        StartHour = $startHour
-        StartMinute = $startMinute
-        EndHour = $endHour
-        EndMinute = $endMinute
+        StartHour = [int]$startComponents[0]
+        StartMinute = [int]$startComponents[1]
+        EndHour = [int]$endComponents[0]
+        EndMinute = [int]$endComponents[1]
     }
 }
 
 function Setup-Config {
     Add-Type -AssemblyName Microsoft.VisualBasic
     try {
-        # Interval
+        # Log Path Configuration
+        $pathText = [Microsoft.VisualBasic.Interaction]::InputBox("Log file save location:", "Setup", $global:logPath)
+        if ($pathText -ne "") { $global:logPath = $pathText }
+
         $intervalText = [Microsoft.VisualBasic.Interaction]::InputBox("Prompt interval (minutes):", "Setup", $global:intervalMinutes)
         if ($intervalText -eq "") { return }
         $global:intervalMinutes = [int]$intervalText
 
-        # Snooze
         $snoozeText = [Microsoft.VisualBasic.Interaction]::InputBox("Snooze time (minutes):", "Setup", $global:snoozeMinutes)
         if ($snoozeText -eq "") { return }
         $global:snoozeMinutes = [int]$snoozeText
 
-        # Timeout
         $timeoutText = [Microsoft.VisualBasic.Interaction]::InputBox("Dialog timeout (seconds):", "Setup", $global:timeoutSeconds)
         if ($timeoutText -eq "") { return }
         $global:timeoutSeconds = [int]$timeoutText
 
-        # Work Hours with default value
         $defaultHours = Format-Time $global:startHour $global:startMinute + " " + Format-Time $global:endHour $global:endMinute
         $hoursText = [Microsoft.VisualBasic.Interaction]::InputBox("Work hours (format: 'H:MM H:MM'):", "Setup", $defaultHours)
         if ($hoursText -ne "") {
@@ -127,34 +109,22 @@ function Setup-Config {
             $global:endMinute   = $parsedTimes.EndMinute
         }
 
-        # Work Days
         $daysDefault = ($global:allowedDays -join ",")
-        $daysText = [Microsoft.VisualBasic.Interaction]::InputBox("Work days (comma-separated, e.g. Monday,Tuesday):", "Setup", $daysDefault)
+        $daysText = [Microsoft.VisualBasic.Interaction]::InputBox("Work days (comma-separated):", "Setup", $daysDefault)
         if ($daysText -ne "") {
             $global:allowedDays = $daysText -split ',' | ForEach-Object { $_.Trim() }
         }
 
-        # Debug Mode
         $dbg = [System.Windows.Forms.MessageBox]::Show("Enable debug logging?", "Setup", [System.Windows.Forms.MessageBoxButtons]::YesNo)
         $global:debugMode = ($dbg -eq [System.Windows.Forms.DialogResult]::Yes)
 
-        # Confirmation
         $formattedStart = Format-Time $global:startHour $global:startMinute
         $formattedEnd = Format-Time $global:endHour $global:endMinute
         
         [System.Windows.Forms.MessageBox]::Show(
-            "Settings saved:`n" +
-            "• Interval: $($global:intervalMinutes)m`n" +
-            "• Snooze: $($global:snoozeMinutes)m`n" +
-            "• Timeout: $($global:timeoutSeconds)s`n" +
-            "• Hours: $formattedStart - $formattedEnd`n" +
-            "• Days: $($global:allowedDays -join ',')`n" +
-            "• Debug: $global:debugMode", 
-            "Setup Complete", 
-            [System.Windows.Forms.MessageBoxButtons]::OK
+            "Settings saved:`n• Log Path: $($global:logPath)`n• Interval: $($global:intervalMinutes)m`n• Snooze: $($global:snoozeMinutes)m`n• Timeout: $($global:timeoutSeconds)s`n• Hours: $formattedStart - $formattedEnd`n• Days: $($global:allowedDays -join ',')`n• Debug: $global:debugMode", 
+            "Setup Complete", [System.Windows.Forms.MessageBoxButtons]::OK
         )
-
-        Log-Debug "CONFIG: Int=$($global:intervalMinutes) Snooze=$($global:snoozeMinutes) Timeout=$($global:timeoutSeconds) Hours=$formattedStart-$formattedEnd Days=$($global:allowedDays -join ',')"
     }
     catch {
         [System.Windows.Forms.MessageBox]::Show("Setup Error: $($_.Exception.Message)", "Error")
@@ -164,12 +134,20 @@ function Setup-Config {
 function Should-Prompt {
     $now = Get-Date
     $dayName = $now.DayOfWeek.ToString()
-    if ($global:allowedDays -notcontains $dayName) { return $false }
+    if ($global:allowedDays -notcontains $dayName) { 
+        Write-Host "Waiting: Today ($dayName) is not an allowed work day." -ForegroundColor Yellow
+        return $false 
+    }
 
     $currentSeconds = $now.TimeOfDay.TotalSeconds
     $startSeconds = ($global:startHour * 3600) + ($global:startMinute * 60)
     $endSeconds = ($global:endHour * 3600) + ($global:endMinute * 60)
-    return ($currentSeconds -ge $startSeconds -and $currentSeconds -le $endSeconds)
+    
+    if ($currentSeconds -lt $startSeconds -or $currentSeconds -gt $endSeconds) {
+        Write-Host "Waiting: Outside of work hours ($($global:startHour):$($global:startMinute) to $($global:endHour):$($global:endMinute))." -ForegroundColor Yellow
+        return $false
+    }
+    return $true
 }
 
 function Show-StatusDialog {
@@ -197,25 +175,31 @@ function Show-StatusDialog {
     $textbox.Text = $defaultText
     $form.Controls.Add($textbox)
 
+    # Create Buttons
     $btnLog = New-Object System.Windows.Forms.Button
     $btnLog.Text = "Log"
     $btnLog.Location = New-Object System.Drawing.Point(310, 110)
     $btnLog.Size = New-Object System.Drawing.Size(80, 28)
     $btnLog.Add_Click({ $result.Button = "Log"; $result.Text = $textbox.Text; $form.Close() })
-    $form.Controls.Add($btnLog)
 
     $btnSkip = New-Object System.Windows.Forms.Button
     $btnSkip.Text = "Skip"
     $btnSkip.Location = New-Object System.Drawing.Point(220, 110)
     $btnSkip.Size = New-Object System.Drawing.Size(80, 28)
     $btnSkip.Add_Click({ $result.Button = "Skip"; $form.Close() })
-    $form.Controls.Add($btnSkip)
 
     $btnSnooze = New-Object System.Windows.Forms.Button
     $btnSnooze.Text = $snoozeLabel
     $btnSnooze.Location = New-Object System.Drawing.Point(130, 110)
     $btnSnooze.Size = New-Object System.Drawing.Size(80, 28)
     $btnSnooze.Add_Click({ $result.Button = "Snooze"; $result.Text = $textbox.Text; $form.Close() })
+
+    # Set Default Keys
+    $form.AcceptButton = $btnLog  # Enter key triggers Log
+    $form.CancelButton = $btnSkip # Escape key triggers Skip
+
+    $form.Controls.Add($btnLog)
+    $form.Controls.Add($btnSkip)
     $form.Controls.Add($btnSnooze)
 
     $timer = New-Object System.Windows.Forms.Timer
@@ -239,10 +223,11 @@ while ($true) {
         }
 
         if (-not (Should-Prompt)) {
-            Start-Sleep -Seconds ($global:intervalMinutes * 60)
+            Start-Sleep -Seconds 60
             continue
         }
 
+        Write-Host "Prompting for status..." -ForegroundColor Green
         $snoozeLabel = "Snooze ($global:snoozeMinutes) min"
         $dialog = Show-StatusDialog -defaultText $global:lastInput -timeoutSeconds $global:timeoutSeconds -snoozeLabel $snoozeLabel
 
