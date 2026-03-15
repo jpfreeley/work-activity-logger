@@ -24,7 +24,7 @@ function Log-Debug {
     param($msg)
     if (-not $global:debugMode) { return }
     $stamp = (Get-Date).ToString()
-    $entry = "`r`nDEBUG [$stamp]: $msg"
+    $entry = "`r`nDEBUG [${stamp}]: $msg"
     Add-Content -Path $global:logPath -Value $entry -Encoding UTF8
 }
 
@@ -39,7 +39,7 @@ function Log-Entry {
     }
 
     $stamp = (Get-Date).ToString()
-    $entry = "`r`n$stamp: $text"
+    $entry = "`r`n${stamp}: $text"
     Add-Content -Path $global:logPath -Value $entry -Encoding UTF8
     Log-Debug "Wrote log entry: $text"
 }
@@ -240,7 +240,7 @@ while ($true) {
                     # If empty, treat like Skip
                     $stamp = (Get-Date).ToString()
                     $skipMsg = "*Skipped* for $($global:intervalMinutes) minutes"
-                    Add-Content -Path $global:logPath -Value "`r`n$stamp: $skipMsg" -Encoding UTF8
+                    Add-Content -Path $global:logPath -Value "`r`n${stamp}: $skipMsg" -Encoding UTF8
                     Log-Debug "Empty Log treated as Skip"
                 }
                 Start-Sleep -Seconds ($global:intervalMinutes * 60)
@@ -248,7 +248,7 @@ while ($true) {
             "Skip" {
                 $stamp = (Get-Date).ToString()
                 $skipMsg = "*Skipped* for $($global:intervalMinutes) minutes"
-                Add-Content -Path $global:logPath -Value "`r`n$stamp: $skipMsg" -Encoding UTF8
+                Add-Content -Path $global:logPath -Value "`r`n${stamp}: $skipMsg" -Encoding UTF8
                 Log-Debug "Skip clicked"
                 Start-Sleep -Seconds ($global:intervalMinutes * 60)
             }
@@ -257,10 +257,10 @@ while ($true) {
                 $stamp = (Get-Date).ToString()
                 if ($text -ne "" -and $text -ne $global:lastInput) {
                     # log the message entered before snooze
-                    Add-Content -Path $global:logPath -Value "`r`n$stamp: $text" -Encoding UTF8
+                    Add-Content -Path $global:logPath -Value "`r`n${stamp}: $text" -Encoding UTF8
                 }
                 $snoozeMsg = "*Snoozed* for $($global:snoozeMinutes) minutes"
-                Add-Content -Path $global:logPath -Value "`r`n$stamp: $snoozeMsg" -Encoding UTF8
+                Add-Content -Path $global:logPath -Value "`r`n${stamp}: $snoozeMsg" -Encoding UTF8
                 Log-Debug "Snoozed for $($global:snoozeMinutes) minutes"
                 Start-Sleep -Seconds ($global:snoozeMinutes * 60)
             }
@@ -269,7 +269,7 @@ while ($true) {
                 Log-Debug "Unknown button/result: $($dialog.Button). Treating as Skip."
                 $stamp = (Get-Date).ToString()
                 $skipMsg = "*Skipped* for $($global:intervalMinutes) minutes"
-                Add-Content -Path $global:logPath -Value "`r`n$stamp: $skipMsg" -Encoding UTF8
+                Add-Content -Path $global:logPath -Value "`r`n${stamp}: $skipMsg" -Encoding UTF8
                 Start-Sleep -Seconds ($global:intervalMinutes * 60)
             }
         }
