@@ -53,62 +53,111 @@ function Format-Time($h, $m) {
     return "$h`:$mStr"
 }
 
-function Parse-HoursPair($input) {
-    $parts = $input.Trim() -split '\s+'
-    if ($parts.Count -ne 2) { throw "Please supply two times separated by space (e.g. 9:00 17:00)" }
+function Parse-HoursPair($inputString) {
+    # Null/empty check
+    if ([string]::IsNullOrWhiteSpace($inputString)) {
+        throw "Work hours cannot be empty. Please enter times like '9:00 17:00'."
+    }
     
-    $start = $parts[0] -split ':'
-    $end = $parts[1] -split ':'
+    # Split by whitespace and filter out empty entries
+    $parts = $inputString -split '\s+' | Where-Object { $_ -ne "" }
     
-    if ($start.Count -ne 2 -or $end.Count -ne 2) { throw "Invalid time format. Use H:MM (e.g. 9:00)" }
+    if ($parts.Count -ne 2) { 
+        throw "Please supply exactly two times separated by a space (e.g. '9:00 17:00')." 
+    }
     
-    # Return flat array to avoid PowerShell unrolling issues
-    return @([int]$start[0], [int]$start[1], [int]$end[0], [int]$end[1])
+    $startTime = $parts[0]
+    $endTime = $parts[1]
+    
+    # Split each time part
+    $startComponents = $startTime -split ':'
+    $endComponents = $endTime -split ':'
+    
+    if ($startComponents.Count -ne 2 -or $endComponents.Count -ne 2) { 
+        throw "Invalid time format. Each time must be H:MM (e.g. 9:00)." 
+    }
+    
+    # Validate numeric values
+    if (-not ($startComponents[0] -match '^\d+$' -and $startComponents[1] -match '^\d+$' -and
+              $endComponents[0] -match '^\d+$' -and $endComponents[1] -match '^\d+$')) {
+        throw "Hours and minutes must be numeric."
+    }
+    
+    # Convert to integers
+    $startHour = [int]$startComponents[0]
+    $startMinute = [int]$startComponents[1]
+    $endHour = [int]$endComponents[0]
+    $endMinute = [int]$endComponents[1]
+    
+    # Return as object with named properties
+    return @{
+        StartHour = $startHour
+        StartMinute = $startMinute
+        EndHour = $endHour
+        EndMinute = $endMinute
+    }
 }
 
 function Setup-Config {
     Add-Type -AssemblyName Microsoft.VisualBasic
     try {
+        # Interval
         $intervalText = [Microsoft.VisualBasic.Interaction]::InputBox("Prompt interval (minutes):", "Setup", $global:intervalMinutes)
         if ($intervalText -eq "") { return }
         $global:intervalMinutes = [int]$intervalText
 
+        # Snooze
         $snoozeText = [Microsoft.VisualBasic.Interaction]::InputBox("Snooze time (minutes):", "Setup", $global:snoozeMinutes)
         if ($snoozeText -eq "") { return }
         $global:snoozeMinutes = [int]$snoozeText
 
+        # Timeout
         $timeoutText = [Microsoft.VisualBasic.Interaction]::InputBox("Dialog timeout (seconds):", "Setup", $global:timeoutSeconds)
         if ($timeoutText -eq "") { return }
         $global:timeoutSeconds = [int]$timeoutText
 
+        # Work Hours with default value
         $defaultHours = Format-Time $global:startHour $global:startMinute + " " + Format-Time $global:endHour $global:endMinute
-        $hoursText = [Microsoft.VisualBasic.Interaction]::InputBox("Work hours (format: '9:00 17:00'):", "Setup", $defaultHours)
+        $hoursText = [Microsoft.VisualBasic.Interaction]::InputBox("Work hours (format: 'H:MM H:MM'):", "Setup", $defaultHours)
         if ($hoursText -ne "") {
-            $times = Parse-HoursPair $hoursText
-            $global:startHour   = $times[0]
-            $global:startMinute = $times[1]
-            $global:endHour     = $times[2]
-            $global:endMinute   = $times[3]
+            $parsedTimes = Parse-HoursPair $hoursText
+            $global:startHour   = $parsedTimes.StartHour
+            $global:startMinute = $parsedTimes.StartMinute
+            $global:endHour     = $parsedTimes.EndHour
+            $global:endMinute   = $parsedTimes.EndMinute
         }
 
+        # Work Days
         $daysDefault = ($global:allowedDays -join ",")
-        $daysText = [Microsoft.VisualBasic.Interaction]::InputBox("Work days (e.g. Monday,Tuesday):", "Setup", $daysDefault)
+        $daysText = [Microsoft.VisualBasic.Interaction]::InputBox("Work days (comma-separated, e.g. Monday,Tuesday):", "Setup", $daysDefault)
         if ($daysText -ne "") {
             $global:allowedDays = $daysText -split ',' | ForEach-Object { $_.Trim() }
         }
 
+        # Debug Mode
         $dbg = [System.Windows.Forms.MessageBox]::Show("Enable debug logging?", "Setup", [System.Windows.Forms.MessageBoxButtons]::YesNo)
         $global:debugMode = ($dbg -eq [System.Windows.Forms.DialogResult]::Yes)
 
+        # Confirmation
         $formattedStart = Format-Time $global:startHour $global:startMinute
         $formattedEnd = Format-Time $global:endHour $global:endMinute
         
-        [System.Windows.Forms.MessageBox]::Show("Settings saved:`n• Interval: $($global:intervalMinutes)m`n• Snooze: $($global:snoozeMinutes)m`n• Timeout: $($global:timeoutSeconds)s`n• Hours: $formattedStart - $formattedEnd`n• Days: $($global:allowedDays -join ',')`n• Debug: $global:debugMode", "Setup", [System.Windows.Forms.MessageBoxButtons]::OK)
+        [System.Windows.Forms.MessageBox]::Show(
+            "Settings saved:`n" +
+            "• Interval: $($global:intervalMinutes)m`n" +
+            "• Snooze: $($global:snoozeMinutes)m`n" +
+            "• Timeout: $($global:timeoutSeconds)s`n" +
+            "• Hours: $formattedStart - $formattedEnd`n" +
+            "• Days: $($global:allowedDays -join ',')`n" +
+            "• Debug: $global:debugMode", 
+            "Setup Complete", 
+            [System.Windows.Forms.MessageBoxButtons]::OK
+        )
 
         Log-Debug "CONFIG: Int=$($global:intervalMinutes) Snooze=$($global:snoozeMinutes) Timeout=$($global:timeoutSeconds) Hours=$formattedStart-$formattedEnd Days=$($global:allowedDays -join ',')"
     }
     catch {
-        [System.Windows.Forms.MessageBox]::Show("Error: $($_.Exception.Message)", "Setup Error")
+        [System.Windows.Forms.MessageBox]::Show("Setup Error: $($_.Exception.Message)", "Error")
     }
 }
 
@@ -128,29 +177,44 @@ function Show-StatusDialog {
 
     $result = [PSCustomObject]@{ Button = $null; Text = ""; GaveUp = $false }
     $form = New-Object System.Windows.Forms.Form
-    $form.Text = "Status Logger"; $form.Size = "420,200"; $form.StartPosition = "CenterScreen"; $form.Topmost = $true
-    $form.FormBorderStyle = 'FixedDialog'; $form.MinimizeBox = $false; $form.MaximizeBox = $false
+    $form.Text = "Status Logger"
+    $form.Size = New-Object System.Drawing.Size(420, 200)
+    $form.StartPosition = "CenterScreen"
+    $form.Topmost = $true
+    $form.FormBorderStyle = 'FixedDialog'
+    $form.MinimizeBox = $false
+    $form.MaximizeBox = $false
 
     $label = New-Object System.Windows.Forms.Label
-    $label.Text = "What are you working on?"; $label.Location = "12,14"; $label.AutoSize = $true
+    $label.Text = "What are you working on?"
+    $label.Location = New-Object System.Drawing.Point(12, 14)
+    $label.AutoSize = $true
     $form.Controls.Add($label)
 
     $textbox = New-Object System.Windows.Forms.TextBox
-    $textbox.Location = "12,38"; $textbox.Size = "380,22"; $textbox.Text = $defaultText
+    $textbox.Location = New-Object System.Drawing.Point(12, 38)
+    $textbox.Size = New-Object System.Drawing.Size(380, 22)
+    $textbox.Text = $defaultText
     $form.Controls.Add($textbox)
 
     $btnLog = New-Object System.Windows.Forms.Button
-    $btnLog.Text = "Log"; $btnLog.Location = "310,110"; $btnLog.Size = "80,28"
+    $btnLog.Text = "Log"
+    $btnLog.Location = New-Object System.Drawing.Point(310, 110)
+    $btnLog.Size = New-Object System.Drawing.Size(80, 28)
     $btnLog.Add_Click({ $result.Button = "Log"; $result.Text = $textbox.Text; $form.Close() })
     $form.Controls.Add($btnLog)
 
     $btnSkip = New-Object System.Windows.Forms.Button
-    $btnSkip.Text = "Skip"; $btnSkip.Location = "220,110"; $btnSkip.Size = "80,28"
+    $btnSkip.Text = "Skip"
+    $btnSkip.Location = New-Object System.Drawing.Point(220, 110)
+    $btnSkip.Size = New-Object System.Drawing.Size(80, 28)
     $btnSkip.Add_Click({ $result.Button = "Skip"; $form.Close() })
     $form.Controls.Add($btnSkip)
 
     $btnSnooze = New-Object System.Windows.Forms.Button
-    $btnSnooze.Text = $snoozeLabel; $btnSnooze.Location = "130,110"; $btnSnooze.Size = "80,28"
+    $btnSnooze.Text = $snoozeLabel
+    $btnSnooze.Location = New-Object System.Drawing.Point(130, 110)
+    $btnSnooze.Size = New-Object System.Drawing.Size(80, 28)
     $btnSnooze.Add_Click({ $result.Button = "Snooze"; $result.Text = $textbox.Text; $form.Close() })
     $form.Controls.Add($btnSnooze)
 
@@ -169,7 +233,10 @@ function Show-StatusDialog {
 # --- Main Loop ---
 while ($true) {
     try {
-        if ($global:firstRun) { Setup-Config; $global:firstRun = $false }
+        if ($global:firstRun) { 
+            Setup-Config
+            $global:firstRun = $false 
+        }
 
         if (-not (Should-Prompt)) {
             Start-Sleep -Seconds ($global:intervalMinutes * 60)
