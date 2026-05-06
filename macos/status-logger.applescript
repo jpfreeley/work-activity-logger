@@ -3,6 +3,8 @@ property intervalMinutes : 15
 property snoozeMinutes : 60
 property timeoutSeconds : 60
 property noteName : "Work Status Log"
+property logDestination : "Apple Notes"
+property obsidianFilePath : "/Users/freeleyj/Documents/Obsidian Vault/Work Status Log.md"
 property firstRun : true
 property debugMode : false
 property allowedDays : {2, 3, 4, 5, 6}
@@ -11,23 +13,50 @@ property startMinute : 0
 property endHour : 17
 property endMinute : 0
 
-on logDebug(actionDesc)
-	if not debugMode then return
-	set nowStamp to (current date) as string
-	set debugEntry to return & "DEBUG [" & nowStamp & "]: " & actionDesc
+on appendToAppleNotes(entryText)
 	tell application "Notes"
 		try
 			set localAccount to first account whose name contains "My Mac"
 			tell folder "Notes" of localAccount
 				try
 					set targetNote to first note whose name is noteName
-					set body of targetNote to (body of targetNote) & debugEntry
+					set body of targetNote to (body of targetNote) & entryText
 				on error
-					make new note at end with properties {name:noteName, body:debugEntry}
+					make new note at end with properties {name:noteName, body:entryText}
 				end try
 			end tell
+		on error errMsg number errNum
+			tell me to display dialog "Apple Notes write failed: " & errMsg buttons {"OK"} default button "OK"
 		end try
 	end tell
+end appendToAppleNotes
+
+on appendToObsidian(entryText)
+	try
+		set fileRef to open for access (POSIX file obsidianFilePath) with write permission
+		write entryText to fileRef starting at eof
+		close access fileRef
+	on error errMsg number errNum
+		try
+			close access (POSIX file obsidianFilePath)
+		end try
+		display dialog "Obsidian file write failed: " & errMsg buttons {"OK"} default button "OK"
+	end try
+end appendToObsidian
+
+on appendLogEntry(entryText)
+	if logDestination is "Obsidian" then
+		my appendToObsidian(entryText)
+	else
+		my appendToAppleNotes(entryText)
+	end if
+end appendLogEntry
+
+on logDebug(actionDesc)
+	if not debugMode then return
+	set nowStamp to (current date) as string
+	set debugEntry to return & "DEBUG [" & nowStamp & "]: " & actionDesc
+	my appendLogEntry(debugEntry)
 end logDebug
 
 on parseTime(timeStr)
@@ -39,6 +68,14 @@ on parseTime(timeStr)
 end parseTime
 
 on setupConfig()
+	set destinationResult to button returned of (display dialog "Log destination:" buttons {"Apple Notes", "Obsidian"} default button logDestination)
+	set logDestination to destinationResult
+	
+	if logDestination is "Obsidian" then
+		set obsidianPathText to text returned of (display dialog "Obsidian markdown file path:" default answer obsidianFilePath buttons {"OK"} default button "OK")
+		set obsidianFilePath to obsidianPathText
+	end if
+	
 	set intervalText to text returned of (display dialog "Prompt interval (minutes):" default answer "15" buttons {"OK"} default button "OK")
 	set intervalMinutes to intervalText as integer
 	
@@ -86,9 +123,12 @@ on setupConfig()
 	set formattedStart to startHourStr & ":" & startMinuteStr
 	set formattedEnd to endHourStr & ":" & endMinuteStr
 	
-	display dialog "Settings saved:" & return & "• Interval: " & intervalMinutes & "m" & return & "• Snooze: " & snoozeMinutes & "m" & return & "• Timeout: " & timeoutSeconds & "s" & return & "• Hours: " & formattedStart & "-" & formattedEnd & return & "• Days: " & allowedDays & return & "• Debug: " & debugMode buttons {"OK"} default button "OK"
+	set destinationSummary to return & "• Destination: " & logDestination
+	if logDestination is "Obsidian" then set destinationSummary to destinationSummary & return & "• Obsidian File: " & obsidianFilePath
 	
-	if debugMode then my logDebug("CONFIG: Int=" & intervalMinutes & " Snooze=" & snoozeMinutes & " Timeout=" & timeoutSeconds & " Hours=" & formattedStart & "-" & formattedEnd & " Days=" & allowedDays)
+	display dialog "Settings saved:" & destinationSummary & return & "• Interval: " & intervalMinutes & "m" & return & "• Snooze: " & snoozeMinutes & "m" & return & "• Timeout: " & timeoutSeconds & "s" & return & "• Hours: " & formattedStart & "-" & formattedEnd & return & "• Days: " & allowedDays & return & "• Debug: " & debugMode buttons {"OK"} default button "OK"
+	
+	if debugMode then my logDebug("CONFIG: Dest=" & logDestination & " ObsidianFile=" & obsidianFilePath & " Int=" & intervalMinutes & " Snooze=" & snoozeMinutes & " Timeout=" & timeoutSeconds & " Hours=" & formattedStart & "-" & formattedEnd & " Days=" & allowedDays)
 end setupConfig
 
 on shouldPrompt()
@@ -145,19 +185,7 @@ on idle
 				set snoozeEntry to return & nowStamp & ": *Snoozed* for " & snoozeMinutes & " minutes"
 			end if
 			
-			tell application "Notes"
-				try
-					set localAccount to first account whose name contains "My Mac"
-					tell folder "Notes" of localAccount
-						try
-							set targetNote to first note whose name is noteName
-							set body of targetNote to (body of targetNote) & snoozeEntry
-						on error
-							make new note at end with properties {name:noteName, body:snoozeEntry}
-						end try
-					end tell
-				end try
-			end tell
+			my appendLogEntry(snoozeEntry)
 			
 			return (snoozeMinutes * 60)
 		end if
@@ -171,19 +199,7 @@ on idle
 		set nowStamp to (current date) as string
 		set logEntry to return & nowStamp & ": " & inputText
 		
-		tell application "Notes"
-			try
-				set localAccount to first account whose name contains "My Mac"
-				tell folder "Notes" of localAccount
-					try
-						set targetNote to first note whose name is noteName
-						set body of targetNote to (body of targetNote) & logEntry
-					on error
-						make new note at end with properties {name:noteName, body:logEntry}
-					end try
-				end tell
-			end try
-		end tell
+		my appendLogEntry(logEntry)
 		return (intervalMinutes * 60)
 	else
 		if debugMode then my logDebug("Skip clicked")
@@ -191,19 +207,7 @@ on idle
 		set nowStamp to (current date) as string
 		set skipEntry to return & nowStamp & ": *Skipped* for " & intervalMinutes & " minutes"
 		
-		tell application "Notes"
-			try
-				set localAccount to first account whose name contains "My Mac"
-				tell folder "Notes" of localAccount
-					try
-						set targetNote to first note whose name is noteName
-						set body of targetNote to (body of targetNote) & skipEntry
-					on error
-						make new note at end with properties {name:noteName, body:skipEntry}
-					end try
-				end tell
-			end try
-		end tell
+		my appendLogEntry(skipEntry)
 		
 		return (intervalMinutes * 60)
 	end if
