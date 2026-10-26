@@ -74,4 +74,4 @@ powershell.exe -STA -NoProfile -ExecutionPolicy Bypass -File .\status-logger.ps1
 ## Notes
 
 This project was AI assisted, mainly Perplexity (free) with some help from Gemini 3 Flash and Qwen3 Coder.
-No license has been chosen yet, so the default is all rights reserved. Ask if you want to reuse it.
+Released under the MIT License, see [LICENSE](LICENSE).
