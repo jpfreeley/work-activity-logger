@@ -4,7 +4,7 @@ property snoozeMinutes : 60
 property timeoutSeconds : 60
 property noteName : "Work Status Log"
 property logDestination : "Apple Notes"
-property obsidianFilePath : "~/Documents/Obsidian Vault/Work Status Log.md"
+property obsidianFilePath : (POSIX path of (path to home folder)) & "Documents/Obsidian Vault/Work Status Log.md"   -- change it when asked at first run, or here
 property firstRun : true
 property debugMode : false
 property allowedDays : {2, 3, 4, 5, 6}
