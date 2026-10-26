@@ -66,7 +66,7 @@ powershell.exe -STA -NoProfile -ExecutionPolicy Bypass -File .\status-logger.ps1
 
 ## Limits
 
-- Settings are asked again each time the script starts. They are not saved between runs.
+- There is no config file. Settings are answered in dialogs when the script starts (the Windows version asks every time it starts).
 - The log is plain text, with no sync. Writing to iCloud so other devices see it is on the to-do list.
 - Times use the computer's local clock and its default date format, so lines are not machine-sortable.
 - There are no automated tests. It is a personal tool.
