@@ -1,6 +1,6 @@
-# How to run?? 
+# How to run 
 
-Save the PowerShell script I provided earlier as `status-logger.ps1` in a folder you won’t move or delete, e.g., `C:\Scripts\status-logger.ps1`.
+Save `status-logger.ps1` from this repository in a folder you won’t move or delete, e.g., `C:\Scripts\status-logger.ps1`.
 
 Run PowerShell with the STA apartment state:
 
@@ -8,9 +8,9 @@ Run PowerShell with the STA apartment state:
 powershell.exe -STA -NoProfile -ExecutionPolicy Bypass -File .\status-logger.ps1
 ```
 
-# Where are logs stored??
+# Where the log is stored
 
-In the PowerShell script I provided, the log file is stored in your **Documents** folder.
+In the PowerShell script, the log file is stored in your **Documents** folder.
 
 Specifically, the location is defined by this line in the script:
 ```powershell
@@ -32,11 +32,11 @@ If you would prefer the logs to be saved elsewhere (for example, in a Dropbox or
 $global:logPath = "C:\MyLogs\WorkStatus.txt"
 ```
 
-# How to run continuously??
+# How to run continuously
 
 To have this PowerShell status logger run continuously at startup on Windows 11, the best approach is:
 
-1. Save the script as a `.ps1` file (e.g., `status-logger.ps1`).
+1. Save the script as `status-logger.ps1`.
 
 2. Create a shortcut or a scheduled task that runs PowerShell with the right parameters to launch this script in the background at user login.
 
@@ -48,7 +48,7 @@ Here’s how to set it up:
 
 ### Step 1: Save your script
 
-Save the PowerShell script I provided earlier as `status-logger.ps1` in a folder you won’t move or delete, e.g., `C:\Scripts\status-logger.ps1`.
+Save `status-logger.ps1` from this repository in a folder you won’t move or delete, e.g., `C:\Scripts\status-logger.ps1`.
 
 ---
 
